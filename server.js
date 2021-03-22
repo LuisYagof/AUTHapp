@@ -64,13 +64,14 @@ server.delete('/signup', (req, res) => {
             db.db("signup")
                 .collection("users")
                 .deleteOne(USER, (err, result) => {
-                    if (err){
+                    if (result.deletedCount === 0){
                         res.status(400).json({
-                            data: err,
+                            data: "User cannot be deleted",
                             ok: false,
                           })
                           db.close()
                     } else {
+                        console.log(result);
                         res.send("User was deleted correctly")
                         db.close()
                     }

@@ -66,7 +66,7 @@ server.delete('/signup', (req, res) => {
                 .deleteOne(USER, (err, result) => {
                     if (result.deletedCount === 0){
                         res.status(400).json({
-                            data: "User cannot be deleted",
+                            data: "User already does not exist",
                             ok: false,
                           })
                           db.close()

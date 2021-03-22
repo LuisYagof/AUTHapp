@@ -69,10 +69,11 @@ server.delete('/delete', (req, res) => {
         email: req.body.email,
         pass: md5(req.body.pass)
     }
-    let token = jwt.sign({email: USER.email}, md5(process.env.SECRET))
-    console.log(token);
-    const TOKENfront = String(req.headers.authorization)
-    console.log(TOKENfront);
+    // let token = jwt.sign({email: USER.email}, md5(process.env.SECRET))
+    // console.log(token);
+    // const TOKENfront = String(req.headers.authorization)
+    // console.log(TOKENfront);
+    let decoded = jwt.verify(req.headers.authorization, md5(process.env.SECRET))
 
     if (token === TOKENfront){
         MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {

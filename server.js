@@ -16,7 +16,16 @@ server.use(express.json());
 server.listen(listenPort,
     () => console.log(`Server started listening on ${listenPort}`))
 
-// -------------------------------------------------POST
+//---------------------------------------------DB STATUS
+/*  >MONGODB DATABASE CREATED
+    >COLLECTION CREATED
+    >UNIQUE INDEX CREATED: 
+        db.collection
+        .createIndex( <key and index type specification>, { unique: true } )
+        (NOW EMAIL FIELD CANNOT BE REPEATED)
+*/ 
+
+// -------------------------------------------------SIGNUP
 
 server.post('/signup', (req, res) => {
     const USER = {
@@ -73,6 +82,42 @@ server.delete('/signup', (req, res) => {
                     } else {
                         console.log(result);
                         res.send("User was deleted correctly")
+                        db.close()
+                    }
+                })
+    
+        } catch {
+            console.log(err);
+            res.status(500).json({
+              data: err,
+              ok: false,
+            })
+        }
+    })
+})
+
+// -------------------------------------------------LOGIN
+
+server.post('/login', (req, res) => {
+    const USER = {
+        email: req.body.email,
+        pass: md5(req.body.pass)
+    }
+
+    MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
+        try {
+            db.db("signup")
+                .collection("users")
+                .findOne(USER, (err, result) => {
+                    if (result == null){
+                        res.status(401).json({
+                            data: "Password do not match",
+                            ok: false,
+                          })
+                          db.close()
+                    } else {
+                        console.log(result);
+                        res.send("Logged correctly")
                         db.close()
                     }
                 })

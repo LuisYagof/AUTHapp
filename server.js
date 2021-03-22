@@ -129,7 +129,7 @@ server.post('/login', (req, res) => {
                           db.close()
                     } else {
                         // console.log(result)
-                        let token = jwt.sign({email: USER.email}, process.env.SECRET, {algorithm: 'RS256'})
+                        let token = jwt.sign({email: USER.email}, md5(process.env.SECRET))
                         console.log(token);
                         res.send(token)
                         db.close()

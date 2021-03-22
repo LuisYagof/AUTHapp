@@ -4,6 +4,8 @@ const MongoClient = require('mongodb').MongoClient
 const MONGOdb = process.env.MONGO
 const optionsMongo = { useNewUrlParser: true, useUnifiedTopology: true }
 const md5 = require('md5')
+const jwt = require('jsonwebtoken');
+let token = jwt.sign({ foo: 'bar' }, 'shhhhh');
 
 const server =  express()
 const listenPort = process.env.PORT || 8080;
@@ -62,38 +64,48 @@ server.post('/signup', (req, res) => {
 
 // -------------------------------------------------DELETE
 
-server.delete('/signup', (req, res) => {
+server.delete('/delete', (req, res) => {
     const USER = {
         email: req.body.email,
         pass: md5(req.body.pass)
     }
+    let token = jwt.sign({email: USER.email}, md5(process.env.SECRET))
+    console.log(token);
+    const TOKENfront = String(req.headers.authorization)
+    console.log(TOKENfront);
 
-    MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
-        try {
-            db.db("signup")
-                .collection("users")
-                .deleteOne(USER, (err, result) => {
-                    if (result.deletedCount === 0){
-                        res.status(400).json({
-                            data: "User already does not exist",
-                            ok: false,
-                          })
-                          db.close()
-                    } else {
-                        console.log(result);
-                        res.send("User was deleted correctly")
-                        db.close()
-                    }
+    if (token === TOKENfront){
+        MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
+            try {
+                db.db("signup")
+                    .collection("users")
+                    .deleteOne(USER, (err, result) => {
+                        if (result.deletedCount === 0){
+                            res.status(400).json({
+                                data: "User already does not exist",
+                                ok: false,
+                            })
+                            db.close()
+                        } else {
+                            res.send("User was deleted correctly")
+                            db.close()
+                        }
+                    })
+        
+            } catch {
+                // console.log(err);
+                res.status(500).json({
+                data: err,
+                ok: false,
                 })
-    
-        } catch {
-            console.log(err);
-            res.status(500).json({
-              data: err,
-              ok: false,
-            })
-        }
-    })
+            }
+        })
+    } else {
+        res.status(401).json({
+            data: "Unauthorized",
+            ok: false,
+          })
+    }
 })
 
 // -------------------------------------------------LOGIN
@@ -116,8 +128,10 @@ server.post('/login', (req, res) => {
                           })
                           db.close()
                     } else {
-                        console.log(result);
-                        res.send("Logged correctly")
+                        // console.log(result)
+                        let token = jwt.sign({email: USER.email}, process.env.SECRET, {algorithm: 'RS256'})
+                        console.log(token);
+                        res.send(token)
                         db.close()
                     }
                 })

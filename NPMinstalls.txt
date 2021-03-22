@@ -7,3 +7,4 @@ npm i express
 
 npm i mongoose
 npm i md5
+npm i jsonwebtoken

@@ -1,0 +1,9 @@
+npm init
+npm i node
+npm i mongodb
+npm i dotenv
+npm i nodemon
+npm i express
+
+npm i mongoose
+npm i md5

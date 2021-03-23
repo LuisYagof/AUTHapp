@@ -5,6 +5,7 @@ const MONGOdb = process.env.MONGO
 const optionsMongo = { useNewUrlParser: true, useUnifiedTopology: true }
 const md5 = require('md5')
 const jwt = require('jsonwebtoken');
+const cryptoRS = require('crypto-random-string')
 
 const server =  express()
 const listenPort = process.env.PORT || 8080;
@@ -25,91 +26,78 @@ server.listen(listenPort,
         .createIndex( <key and index type specification>, { unique: true } )
         (NOW EMAIL FIELD CANNOT BE REPEATED)
 */ 
+
+// ---------------------------------------------VALIDATION
+
+const emailIsValid = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  
+const passIsValid = (pass) => /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(pass)
+
 // -------------------------------------------------SIGNUP
 
 server.post('/signup', (req, res) => {
     const USER = {
         email: req.body.email,
-        pass: md5(req.body.pass)
+        pass: md5(req.body.pass),
+        secret: cryptoRS({length: 10, type: 'base64'})
     }
-
-    MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
-        try {
-            db.db("signup")
-                .collection("users")
-                .insertOne(USER, (err, result) => {
-                    if (err){
-                        res.status(400).json({
-                            data: err,
-                            ok: false,
-                          })
-                          db.close()
-                    } else {
-                        res.send("User was added correctly")
-                        db.close()
-                    }
-                })
-    
-        } catch {
-            res.status(500).json({
-              data: err,
-              ok: false,
-            })
-        }
-    })
-})
-
-// -------------------------------------------------LOGIN
-
-server.post('/login', (req, res) => {
-    const USER = {
-        email: req.body.email,
-        pass: md5(req.body.pass)
-    }
-
-    MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
-        try {
-            db.db("signup")
-                .collection("users")
-                .findOne(USER, (err, result) => {
-                    if (result == null){
-                        res.status(401).json({
-                            data: "Password do not match",
-                            ok: false,
-                          })
-                          db.close()
-                    } else {
-                        let token = jwt.sign({email: USER.email}, md5(process.env.SECRET))
-                        res.send(token)
-                        db.close()
-                    }
-                })
-    
-        } catch {
-            res.status(500).json({
-              data: err,
-              ok: false,
-            })
-        }
-    })
-})
-
-// -------------------------------------------------DELETE
-
-server.delete('/delete', (req, res) => {
-
-    let decoded = jwt.verify(req.headers.authorization, md5(process.env.SECRET))
-
-    if (decoded.email){
+    if ( emailIsValid(USER.email) && passIsValid(req.body.pass) ) {
+        
         MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
             try {
                 db.db("signup")
                     .collection("users")
-                    .deleteOne({email: decoded.email}, (err, result) => {
-                        res.send("User was deleted correctly")
-                        db.close()
+                    .insertOne(USER, (err, result) => {
+                        if (err){
+                            res.redirect(400, '/login')
+                            db.close()
+                        } else {
+                            res.send("User was added correctly")
+                            db.close()
+                        }
                     })
         
+            } catch {
+                res.status(500).json({
+                    data: err,
+                    ok: false,
+                })
+            }
+        })
+    } else {
+        res.status(406).json({
+            data: "Email invalid / Pass must contain minimum eight characters, at least one letter and one number",
+            ok: false,
+          })
+    }
+})
+
+// -------------------------------------------------LOGIN
+
+server.get('/login', (req, res) => {
+    const USER = {
+        email: req.body.email,
+        pass: md5(req.body.pass)
+    }
+    if ( emailIsValid(USER.email) && passIsValid(req.body.pass) ) {
+        MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
+            try {
+                db.db("signup")
+                    .collection("users")
+                    .findOne(USER, (err, result) => {
+                        if (result == null){
+                            res.status(401).json({
+                                data: "Password and email do not match",
+                                ok: false,
+                            })
+                            db.close()
+                        } else {
+                            let secret = result.secret
+                            let token = jwt.sign({email: USER.email}, secret)
+                            res.send(token)
+                            db.close()
+                        }
+                    })
             } catch {
                 res.status(500).json({
                 data: err,
@@ -118,30 +106,82 @@ server.delete('/delete', (req, res) => {
             }
         })
     } else {
+        res.status(406).json({
+            data: "Email invalid / Pass must contain minimum eight characters, at least one letter and one number",
+            ok: false,
+        })
+    }
+})
+
+// -------------------------------------------------DELETE
+
+server.delete('/delete', (req, res) => {
+
+    let decoded = jwt.decode(req.headers.authorization)
+    if (decoded.email) {
+        MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
+            db.db("signup")
+                .collection("users")
+                .findOne({email: decoded.email}, (err, result) => {
+                    let verified = jwt.verify(req.headers.authorization, result.secret)
+                
+                    if (verified.email){
+                        MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
+                            try {
+                                db.db("signup")
+                                    .collection("users")
+                                    .deleteOne({email: verified.email}, (err, result) => {
+                                        res.send("User was deleted correctly")
+                                        db.close()
+                                    })
+                            } catch {
+                                res.status(500).json({
+                                data: err,
+                                ok: false,
+                                })
+                            }
+                        })
+                    } else {
+                        res.status(401).json({
+                            data: "Unauthorized",
+                            ok: false,
+                          })
+                    }
+                })   
+            })
+    } else {
         res.status(401).json({
             data: "Unauthorized",
             ok: false,
-          })
+            })
     }
+
 })
 
 // ----------------------------------------------READ PRIVATE
 
 server.get('/private', (req, res) => {
-
     try {
-        let decoded = jwt.verify(req.headers.authorization, md5(process.env.SECRET))
+        let decoded = jwt.decode(req.headers.authorization)
         if (decoded.email) {
             MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
                 try {
                     db.db("signup")
-                    .collection("users")
-                    .findOne({email: decoded.email}, (err, result) => {
-                        res.send(result)
-                        db.close()
-                        }
-                    )
-                    
+                        .collection("users")
+                        .findOne({email: decoded.email}, (err, result) => {
+                            try {
+                                let verified = jwt.verify(req.headers.authorization, result.secret)
+                                if (verified.email) {
+                                        res.send(result)
+                                        db.close() 
+                                    }
+                            } catch {
+                                res.status(401).json({
+                                    data: "Unauthorized",
+                                    ok: false,
+                                })
+                            }
+                        })
                 } catch {
                     res.status(500).json({
                         data: err,
@@ -149,10 +189,11 @@ server.get('/private', (req, res) => {
                     })
                 }
             })
-        }
+        }                 
     } catch {
-    res.status(401).json({
-        data: "Unauthorized",
-        ok: false,
-      })
-}})
+        res.status(401).json({
+            data: "Unauthorized",
+            ok: false,
+        })
+    }
+})

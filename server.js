@@ -5,7 +5,6 @@ const MONGOdb = process.env.MONGO
 const optionsMongo = { useNewUrlParser: true, useUnifiedTopology: true }
 const md5 = require('md5')
 const jwt = require('jsonwebtoken');
-let token = jwt.sign({ foo: 'bar' }, 'shhhhh');
 
 const server =  express()
 const listenPort = process.env.PORT || 8080;
@@ -26,7 +25,6 @@ server.listen(listenPort,
         .createIndex( <key and index type specification>, { unique: true } )
         (NOW EMAIL FIELD CANNOT BE REPEATED)
 */ 
-
 // -------------------------------------------------SIGNUP
 
 server.post('/signup', (req, res) => {
@@ -53,60 +51,12 @@ server.post('/signup', (req, res) => {
                 })
     
         } catch {
-            console.log(err);
             res.status(500).json({
               data: err,
               ok: false,
             })
         }
     })
-})
-
-// -------------------------------------------------DELETE
-
-server.delete('/delete', (req, res) => {
-    const USER = {
-        email: req.body.email,
-        pass: md5(req.body.pass)
-    }
-    // let token = jwt.sign({email: USER.email}, md5(process.env.SECRET))
-    // console.log(token);
-    // const TOKENfront = String(req.headers.authorization)
-    // console.log(TOKENfront);
-    let decoded = jwt.verify(req.headers.authorization, md5(process.env.SECRET))
-
-    if (token === TOKENfront){
-        MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
-            try {
-                db.db("signup")
-                    .collection("users")
-                    .deleteOne(USER, (err, result) => {
-                        if (result.deletedCount === 0){
-                            res.status(400).json({
-                                data: "User already does not exist",
-                                ok: false,
-                            })
-                            db.close()
-                        } else {
-                            res.send("User was deleted correctly")
-                            db.close()
-                        }
-                    })
-        
-            } catch {
-                // console.log(err);
-                res.status(500).json({
-                data: err,
-                ok: false,
-                })
-            }
-        })
-    } else {
-        res.status(401).json({
-            data: "Unauthorized",
-            ok: false,
-          })
-    }
 })
 
 // -------------------------------------------------LOGIN
@@ -129,16 +79,13 @@ server.post('/login', (req, res) => {
                           })
                           db.close()
                     } else {
-                        // console.log(result)
                         let token = jwt.sign({email: USER.email}, md5(process.env.SECRET))
-                        console.log(token);
                         res.send(token)
                         db.close()
                     }
                 })
     
         } catch {
-            console.log(err);
             res.status(500).json({
               data: err,
               ok: false,
@@ -146,3 +93,66 @@ server.post('/login', (req, res) => {
         }
     })
 })
+
+// -------------------------------------------------DELETE
+
+server.delete('/delete', (req, res) => {
+
+    let decoded = jwt.verify(req.headers.authorization, md5(process.env.SECRET))
+
+    if (decoded.email){
+        MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
+            try {
+                db.db("signup")
+                    .collection("users")
+                    .deleteOne({email: decoded.email}, (err, result) => {
+                        res.send("User was deleted correctly")
+                        db.close()
+                    })
+        
+            } catch {
+                res.status(500).json({
+                data: err,
+                ok: false,
+                })
+            }
+        })
+    } else {
+        res.status(401).json({
+            data: "Unauthorized",
+            ok: false,
+          })
+    }
+})
+
+// ----------------------------------------------READ PRIVATE
+
+server.get('/private', (req, res) => {
+
+    try {
+        let decoded = jwt.verify(req.headers.authorization, md5(process.env.SECRET))
+        if (decoded.email) {
+            MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
+                try {
+                    db.db("signup")
+                    .collection("users")
+                    .findOne({email: decoded.email}, (err, result) => {
+                        res.send(result)
+                        db.close()
+                        }
+                    )
+                    
+                } catch {
+                    res.status(500).json({
+                        data: err,
+                        ok: false,
+                    })
+                }
+            })
+        }
+    } catch {
+    res.status(401).json({
+        data: "Unauthorized",
+        ok: false,
+      })
+}})

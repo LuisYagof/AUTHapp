@@ -3,6 +3,7 @@ const ENV = require('dotenv').config();
 const MongoClient = require('mongodb').MongoClient
 const MONGOdb = process.env.MONGO
 const optionsMongo = { useNewUrlParser: true, useUnifiedTopology: true }
+const cors = require('cors')
 const md5 = require('md5')
 const jwt = require('jsonwebtoken');
 const cryptoRS = require('crypto-random-string')
@@ -10,8 +11,17 @@ const cryptoRS = require('crypto-random-string')
 const server =  express()
 const listenPort = process.env.PORT || 8080;
 
+const staticFilesPath = express.static(__dirname + '/Public');
+server.use(staticFilesPath);
+
 server.use(express.urlencoded({extended:false}));
 server.use(express.json());
+
+server.use(cors())
+
+// const corsOptions = {
+//     origin: "*"
+// }
 
 // -------------------------------------LEVANTAR SERVIDOR
 
@@ -41,18 +51,20 @@ server.post('/signup', (req, res) => {
         pass: md5(req.body.pass),
         secret: cryptoRS({length: 10, type: 'base64'})
     }
+
     if ( emailIsValid(USER.email) && passIsValid(req.body.pass) ) {
-        
         MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
             try {
                 db.db("signup")
                     .collection("users")
                     .insertOne(USER, (err, result) => {
                         if (err){
-                            res.redirect(400, '/login')
+                            console.log("ocupado");
+                            res.status(406)
                             db.close()
                         } else {
-                            res.send("User was added correctly")
+                            console.log("ok");
+                            res.status(200)
                             db.close()
                         }
                     })

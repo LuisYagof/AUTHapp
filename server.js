@@ -59,7 +59,7 @@ server.post('/signup', (req, res) => {
         
             } catch {
                 res.status(500).json({
-                    data: err,
+                    data: "There's a problem with the internal server. Try again later",
                     ok: false,
                 })
             }
@@ -93,14 +93,14 @@ server.get('/login', (req, res) => {
                             db.close()
                         } else {
                             let secret = result.secret
-                            let token = jwt.sign({email: USER.email}, secret)
+                            let token = jwt.sign({email: USER.email}, secret, {expiresIn: 600})
                             res.send(token)
                             db.close()
                         }
                     })
             } catch {
                 res.status(500).json({
-                data: err,
+                data: "There's a problem with the internal server. Try again later",
                 ok: false,
                 })
             }
@@ -116,75 +116,79 @@ server.get('/login', (req, res) => {
 // -------------------------------------------------DELETE
 
 server.delete('/delete', (req, res) => {
-
-    let decoded = jwt.decode(req.headers.authorization)
-    if (decoded.email) {
-        MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
-            db.db("signup")
-                .collection("users")
-                .findOne({email: decoded.email}, (err, result) => {
-                    let verified = jwt.verify(req.headers.authorization, result.secret)
-                
-                    if (verified.email){
-                        MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
-                            try {
-                                db.db("signup")
-                                    .collection("users")
-                                    .deleteOne({email: verified.email}, (err, result) => {
-                                        res.send("User was deleted correctly")
-                                        db.close()
-                                    })
-                            } catch {
-                                res.status(500).json({
-                                data: err,
-                                ok: false,
+    try {
+        let tokenArray = req.headers.authorization.split(" ")
+        let decoded = jwt.decode(tokenArray[1])
+        if (decoded.email) {
+            MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
+                db.db("signup")
+                    .collection("users")
+                    .findOne({email: decoded.email}, (err, result) => {
+                        try {
+                            let verified = jwt.verify(tokenArray[1], result.secret)
+                            if (verified.email){
+                                MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
+                                    try {
+                                        db.db("signup")
+                                            .collection("users")
+                                            .deleteOne({email: verified.email}, (err, result) => {
+                                                res.send("User was deleted correctly")
+                                                db.close()
+                                            })
+                                    } catch {
+                                        res.status(500).json({
+                                        data: "There's a problem with the internal server. Try again later",
+                                        ok: false,
+                                        })
+                                    }
                                 })
                             }
-                        })
-                    } else {
-                        res.status(401).json({
-                            data: "Unauthorized",
-                            ok: false,
-                          })
-                    }
-                })   
-            })
-    } else {
+                        } catch {
+                            res.status(401).json({
+                                data: "You're not authorized to delete a user. Please try logging in again",
+                                ok: false,
+                            })
+                        }
+                    })   
+                })
+            }
+    } catch {
         res.status(401).json({
-            data: "Unauthorized",
+            data: "You're not authorized to delete a user. Please try logging in again",
             ok: false,
             })
     }
-
 })
 
 // ----------------------------------------------READ PRIVATE
 
 server.get('/private', (req, res) => {
     try {
-        let decoded = jwt.decode(req.headers.authorization)
+        let tokenArray = req.headers.authorization.split(" ")
+        let decoded = jwt.decode(tokenArray[1])
+        // console.log(decoded);
         if (decoded.email) {
             MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
                 try {
                     db.db("signup")
-                        .collection("users")
-                        .findOne({email: decoded.email}, (err, result) => {
-                            try {
-                                let verified = jwt.verify(req.headers.authorization, result.secret)
+                    .collection("users")
+                    .findOne({email: decoded.email}, (err, result) => {
+                        try {
+                            let verified = jwt.verify(tokenArray[1], result.secret)
                                 if (verified.email) {
                                         res.send(result)
                                         db.close() 
                                     }
                             } catch {
                                 res.status(401).json({
-                                    data: "Unauthorized",
+                                    data: "You're not authorized to see this content. Please try logging in again",
                                     ok: false,
                                 })
                             }
                         })
                 } catch {
                     res.status(500).json({
-                        data: err,
+                        data: "There's a problem with the internal server. Try again later",
                         ok: false,
                     })
                 }
@@ -192,7 +196,45 @@ server.get('/private', (req, res) => {
         }                 
     } catch {
         res.status(401).json({
-            data: "Unauthorized",
+            data: "You're not authorized to see this content. Please try logging in again",
+            ok: false,
+        })
+    }
+})
+
+// ---------------------------------------------------LOGOUT
+
+
+server.put('/logout', (req, res) => {
+    try {
+        let newSecret = cryptoRS({length: 10, type: 'base64'})
+        let tokenArray = req.headers.authorization.split(" ")
+        let decoded = jwt.decode(tokenArray[1])
+        if (decoded.email) {
+            MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
+                try {
+                    db.db("signup")
+                        .collection("users")
+                        .updateOne({email: decoded.email}, {$set: {secret: newSecret}}, (err, result) => {
+                            if (err){
+                                res.status(400, "Fatal error-- Humans must be destroyed")
+                                db.close()
+                            } else {
+                                res.redirect(200, '/login')
+                                db.close()
+                            }
+                        })
+                } catch {
+                    res.status(500).json({
+                        data: "There's a problem with the internal server. Try again later",
+                        ok: false,
+                    })
+                }
+            })
+        }             
+    } catch {
+        res.status(401).json({
+            data: "You're already logged out",
             ok: false,
         })
     }

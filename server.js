@@ -27,9 +27,35 @@ server.use(cors())
 
 server.listen(listenPort,
     () => console.log(`Server started listening on ${listenPort}`))
+    
+// ---------------------------------SERVICIO DE ESTÁTICOS
 
-//---------------------------------------------DB STATUS
-/*  >MONGODB DATABASE CREATED
+server.get('/login', (req,res,next) => {
+    let options = {
+        root: __dirname + '/Public'
+    };
+        
+    let fileName = 'login.html';
+    res.sendFile(fileName, options, function (err) {
+        if (err) {
+            next(err);
+        } else {
+            console.log('Sent:', fileName);
+        }
+    });
+});
+
+server.get('/signup', (req,res,next) => {
+    let options = {
+        root: __dirname + '/Public'
+    };
+        
+    let fileName = 'index.html';
+    res.sendFile(fileName, options);
+});
+
+    //---------------------------------------------DB STATUS
+    /*  >MONGODB DATABASE CREATED
     >COLLECTION CREATED
     >UNIQUE INDEX CREATED: 
         db.collection
@@ -59,34 +85,40 @@ server.post('/signup', (req, res) => {
                     .collection("users")
                     .insertOne(USER, (err, result) => {
                         if (err){
-                            console.log("ocupado");
-                            res.status(406)
+                            res.status(400).json({
+                                status: 400,
+                                data: "User added correctly",
+                                url: "/login",
+                            })
+                            //res.redirect(400, '/login')
                             db.close()
                         } else {
-                            console.log("ok");
-                            res.status(200)
+                            res.status(200).json({
+                                status: 200,
+                                data: "User added correctly",
+                                url: "/login"
+                            })
                             db.close()
                         }
                     })
-        
             } catch {
                 res.status(500).json({
-                    data: "There's a problem with the internal server. Try again later",
-                    ok: false,
+                    status: 500,
+                    data: "There's a problem with the internal server. Try again later"
                 })
             }
         })
     } else {
         res.status(406).json({
-            data: "Email invalid / Pass must contain minimum eight characters, at least one letter and one number",
-            ok: false,
+            status: 406,
+            data: "Email invalid / Pass must contain minimum eight characters, at least one letter and one number"
           })
     }
 })
 
 // -------------------------------------------------LOGIN
 
-server.get('/login', (req, res) => {
+server.post('/login', (req, res) => {
     const USER = {
         email: req.body.email,
         pass: md5(req.body.pass)
@@ -99,28 +131,31 @@ server.get('/login', (req, res) => {
                     .findOne(USER, (err, result) => {
                         if (result == null){
                             res.status(401).json({
-                                data: "Password and email do not match",
-                                ok: false,
+                                status: 401,
+                                data: "Password and email do not match"
                             })
                             db.close()
                         } else {
-                            let secret = result.secret
-                            let token = jwt.sign({email: USER.email}, secret, {expiresIn: 600})
-                            res.send(token)
+                            let token = jwt.sign({email: USER.email}, result.secret, {expiresIn: 600})
+                            res.status(200).json({
+                                status: 200,
+                                data: "Token sent",
+                                token: token
+                            })
                             db.close()
                         }
                     })
             } catch {
                 res.status(500).json({
-                data: "There's a problem with the internal server. Try again later",
-                ok: false,
+                    status: 500,
+                    data: "There's a problem with the internal server. Try again later"
                 })
             }
         })
     } else {
         res.status(406).json({
-            data: "Email invalid / Pass must contain minimum eight characters, at least one letter and one number",
-            ok: false,
+            status: 406,
+            data: "Email invalid / Pass must contain minimum eight characters, at least one letter and one number"
         })
     }
 })

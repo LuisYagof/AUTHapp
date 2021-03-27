@@ -80,15 +80,26 @@ form {
     box-shadow: 0px 0px 15px -10px black;
 }
 
-form div {
-    margin: 5%
+form>div {
+    width: 100%;
+    margin: 5%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+form>div.checkbox {
+    flex-direction: row;
 }
 
 form div h2 {
-    font-size: 2.5rem;
+    font-size: 2.4rem;
+    font-weight: bold;
+    text-align: center;
 }
 
 form div input {
+    width: 100%;
     min-width: 300px;
     line-height: 1.5;
     border-radius: 10px;
@@ -101,11 +112,17 @@ form div input:focus {
     outline: none;
 }
 
+form div #keep {
+    width: 10%;
+    min-width:0;
+}
+
 form div button {
-    border-radius: 10px;
+    width: 100%;
+    border-radius: 40px;
     border: none;
     transition: all .2s ease-in-out;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
 }
 
 form div button:focus {
@@ -117,30 +134,28 @@ form div button:hover {
     transform: scale(1.1);
 }
 
-#signup {
-    min-width: 150px;
+.btnBig {
     padding: 5%;
     background-color: #626262;
     color: antiquewhite;
 }
 
-#login {
-    min-width: 200px;
+.notBtn {
     background-color: transparent;
     border: none;
     width: 100%;
 }
 
-#log{
-    min-width: 150px;
-    padding: 5%;
-    background-color: #626262;
-    color: antiquewhite;
+div.dataBox {
+    margin: 5% 0 0 0;
+    text-align: center;
+    /* overflow-wrap: anywhere; */
 }
 
-#sign {
-    min-width: 200px;
-    background-color: transparent;
-    border: none;
-    width: 100%;
+.dissap {
+    display:none;
+}
+
+div.dataBox p {
+    line-height: 1.5;
 }

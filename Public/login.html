@@ -12,7 +12,7 @@
     <main>
         <form>
         <div>
-            <h2 class="title">LOG IN</h2>
+            <h2 class="title">Welcome back!</h2>
         </div>
         <div>
             <input type="email" required name="email" id="email" placeholder="Your email"/>
@@ -20,11 +20,15 @@
         <div>
             <input type="text" required name="password" id="password" placeholder="Your password"/>
         </div>
-        <div>
-            <button type="button" id="log">Log in</button>
+        <div class="checkbox">
+            <input type="checkbox" id="keep">
+            <label for="keep">Keep me logged in</label>
         </div>
         <div>
-            <button type="button" id="sign">Or sign up if you're not registered</button>
+            <button type="button" id="log" class="btnBig">Continue</button>
+        </div>
+        <div>
+            <button type="button" id="sign" class="notBtn">Or sign up if you're not registered</button>
         </div>
         </form>
     </main>

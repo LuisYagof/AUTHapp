@@ -30,13 +30,16 @@ server.listen(listenPort,
     
 // ---------------------------------SERVICIO DE ESTÁTICOS
 
+//--------FileOptions estaba dentro del endpoint de files,
+// -------sobre los filenames. Global porque se repetía
+
+let fileOptions = {
+    root: __dirname + '/Public'
+};
+
 server.get('/login', (req,res,next) => {
-    let options = {
-        root: __dirname + '/Public'
-    };
-        
     let fileName = 'login.html';
-    res.sendFile(fileName, options, function (err) {
+    res.sendFile(fileName, fileOptions, function (err) {
         if (err) {
             next(err);
         } else {
@@ -45,13 +48,12 @@ server.get('/login', (req,res,next) => {
     });
 });
 
-server.get('/signup', (req,res,next) => {
-    let options = {
-        root: __dirname + '/Public'
-    };
-        
-    let fileName = 'index.html';
-    res.sendFile(fileName, options);
+server.get('/signup', (req,res) => {
+    res.sendFile('index.html', fileOptions);
+});
+
+server.get('/home', (req,res) => {
+    res.sendFile('home.html', fileOptions);
 });
 
     //---------------------------------------------DB STATUS
@@ -87,7 +89,7 @@ server.post('/signup', (req, res) => {
                         if (err){
                             res.status(400).json({
                                 status: 400,
-                                data: "User added correctly",
+                                data: "You were already registered",
                                 url: "/login",
                             })
                             //res.redirect(400, '/login')
@@ -140,6 +142,7 @@ server.post('/login', (req, res) => {
                             res.status(200).json({
                                 status: 200,
                                 data: "Token sent",
+                                url: "/home",
                                 token: token
                             })
                             db.close()
@@ -179,11 +182,17 @@ server.delete('/delete', (req, res) => {
                                         db.db("signup")
                                             .collection("users")
                                             .deleteOne({email: verified.email}, (err, result) => {
-                                                res.send("User was deleted correctly")
+                                                res.status(200).json({
+                                                    status:200,
+                                                    data: "User was deleted correctly",
+                                                    ok: true,
+                                                    url: '/signup'
+                                                })
                                                 db.close()
                                             })
                                     } catch {
                                         res.status(500).json({
+                                        status: 500,
                                         data: "There's a problem with the internal server. Try again later",
                                         ok: false,
                                         })
@@ -192,17 +201,21 @@ server.delete('/delete', (req, res) => {
                             }
                         } catch {
                             res.status(401).json({
+                                status: 401,
                                 data: "You're not authorized to delete a user. Please try logging in again",
                                 ok: false,
+                                url: '/login'
                             })
                         }
                     })   
                 })
             }
-    } catch {
-        res.status(401).json({
-            data: "You're not authorized to delete a user. Please try logging in again",
-            ok: false,
+        } catch {
+            res.status(401).json({
+                status: 401,
+                data: "You're not authorized to delete a user. Please try logging in again",
+                ok: false,
+                url: '/login'
             })
     }
 })
@@ -213,7 +226,6 @@ server.get('/private', (req, res) => {
     try {
         let tokenArray = req.headers.authorization.split(" ")
         let decoded = jwt.decode(tokenArray[1])
-        // console.log(decoded);
         if (decoded.email) {
             MongoClient.connect(MONGOdb, optionsMongo, (err, db) => {
                 try {
@@ -223,13 +235,18 @@ server.get('/private', (req, res) => {
                         try {
                             let verified = jwt.verify(tokenArray[1], result.secret)
                                 if (verified.email) {
-                                        res.send(result)
+                                        res.status(200).json({
+                                            data: result,
+                                            status: 200
+                                        })
                                         db.close() 
                                     }
                             } catch {
                                 res.status(401).json({
                                     data: "You're not authorized to see this content. Please try logging in again",
                                     ok: false,
+                                    status: 401,
+                                    url: '/login'
                                 })
                             }
                         })
@@ -237,6 +254,7 @@ server.get('/private', (req, res) => {
                     res.status(500).json({
                         data: "There's a problem with the internal server. Try again later",
                         ok: false,
+                        status: 500
                     })
                 }
             })
@@ -245,6 +263,8 @@ server.get('/private', (req, res) => {
         res.status(401).json({
             data: "You're not authorized to see this content. Please try logging in again",
             ok: false,
+            status: 401,
+            url: '/login'
         })
     }
 })
@@ -264,15 +284,25 @@ server.put('/logout', (req, res) => {
                         .collection("users")
                         .updateOne({email: decoded.email}, {$set: {secret: newSecret}}, (err, result) => {
                             if (err){
-                                res.status(400, "Fatal error-- Humans must be destroyed")
+                                res.status(400).json({
+                                    status: 400,
+                                    data: "Fatal error-- Humans must be destroyed",
+                                    ok: false
+                                })
                                 db.close()
                             } else {
-                                res.redirect(200, '/login')
+                                res.status(200).json({
+                                    status: 200,
+                                    data: "Succesfully logged out",
+                                    ok: true,
+                                    url: '/login'
+                                })
                                 db.close()
                             }
                         })
                 } catch {
                     res.status(500).json({
+                        status: 500,
                         data: "There's a problem with the internal server. Try again later",
                         ok: false,
                     })
@@ -281,6 +311,7 @@ server.put('/logout', (req, res) => {
         }             
     } catch {
         res.status(401).json({
+            status: 401,
             data: "You're already logged out",
             ok: false,
         })

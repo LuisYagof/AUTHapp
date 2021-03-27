@@ -21,6 +21,7 @@ function signup() {
             setTimeout(window.location.href = data.url, 1500)
         }
         if (data.status == 400){
+            alert(data.data + ". Redirecting to login")
             setTimeout(window.location.href = data.url, 1500)
         }
         if (data.status == 406){
